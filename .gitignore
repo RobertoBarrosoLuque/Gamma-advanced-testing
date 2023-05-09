@@ -6,6 +6,7 @@ cache/
 *.env
 htmlcov/
 .coverage*
+.idea/
 
 ### Linux ###
 *~
