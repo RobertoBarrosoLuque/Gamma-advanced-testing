@@ -1,5 +1,3 @@
-from collections import Sequence
-import logging
 from typing import List
 
 import pandas as pd

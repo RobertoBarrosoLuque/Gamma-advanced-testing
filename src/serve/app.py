@@ -8,7 +8,7 @@ from ..predict.main import predict
 
 PING_ROUTE = '/ping'
 PREDICT_ROUTE = '/predict'
-DEBUG_PORT = 5000
+DEBUG_PORT = 8888
 
 logger = getLogger(__name__)
 
