@@ -1,5 +1,6 @@
 from typing import Union
 
+import pandas as pd
 import pytest
 import subprocess
 from time import sleep

@@ -1,7 +1,7 @@
 """Pipeline
 """
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.pipeline import Pipeline
 
 from .features import features_generator
 
