@@ -1,3 +1,5 @@
+from typing import Union
+
 import pytest
 import subprocess
 from time import sleep
@@ -14,7 +16,7 @@ BASE_URL = f'http://localhost:{SERVER_PORT}'
 PREDICT_URL = BASE_URL + PREDICT_ROUTE
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def client():
     webserver_process = subprocess.Popen(SERVE_COMMAND.split(), cwd=ROOT_DIR)
     sleep(5)
@@ -22,8 +24,22 @@ def client():
     webserver_process.terminate()
 
 
-def test_serving_predictions(client):
-    body = {'data': get_test_datapoints(1)}
-    resp = requests.post(PREDICT_URL, json=body)
+def _send_post(n_size: Union[int, str]):
+    if not isinstance(n_size, int):
+        body = {'data': "some random string"}
+    else:
+        body = {'data': get_test_datapoints(n_size)}
+    return requests.post(PREDICT_URL, json=body)
+
+
+@pytest.mark.parametrize("n_size", [1, 10, 100])
+def test_serving_predictions(client, n_size):
+    resp = _send_post(n_size=n_size)
     assert resp.status_code == 200
-    assert len(resp.json()) == 1
+    assert len(resp.json()) == n_size
+
+
+def test_incorrect_serving_prediction(client):
+    resp = _send_post("")
+    assert resp.status_code == 400
+
