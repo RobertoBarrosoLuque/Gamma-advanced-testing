@@ -1,6 +1,11 @@
 import pytest
 from src.train.features.base import BaseFeature
 from src.train.features import FEATURES_LIST
+from src.train.features.features import Out
+from tests.units.dummy_data import OUT_DATA
+import numpy as np
+
+OUT_FEATURE = Out()
 
 
 class TestFeaturesUsage:
@@ -15,6 +20,11 @@ class TestFeaturesUsage:
         assert hasattr(BaseFeature, method)
         assert callable(getattr(BaseFeature, method))
 
+
+@pytest.mark.parametrize("x", OUT_DATA)
+def test_out_feature(x):
+    res = OUT_FEATURE.transform(X=x)
+    isinstance(res, np.ndarray)
 
 
 
