@@ -1,46 +1,50 @@
-from typing import Union
+import json
+import os
+from random import random
 
-import pandas as pd
 import pytest
-import subprocess
-from time import sleep
-from src.config import ROOT_DIR
-from src.serve.app import PREDICT_ROUTE
-from src.serve.app import app as flask_app
-import requests
+
+from src.serve.app import app as flask_app, PREDICT_ROUTE
 from tests.utils import get_test_datapoints
 
-flask_app.config['TESTING'] = True  # not stricly necessary here
-SERVE_COMMAND = 'python -m src.main --serve'
-SERVER_PORT = 8888
-BASE_URL = f'http://localhost:{SERVER_PORT}'
-PREDICT_URL = BASE_URL + PREDICT_ROUTE
+flask_app.config['TESTING'] = True
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def client():
-    webserver_process = subprocess.Popen(SERVE_COMMAND.split(), cwd=ROOT_DIR)
-    sleep(5)
-    yield webserver_process
-    webserver_process.terminate()
+    with flask_app.test_client() as client:
+        yield client
 
 
-def _send_post(n_size: Union[int, str]):
-    if not isinstance(n_size, int):
-        body = {'data': "some random string"}
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    ['corrupted_data', 'ill_formated_body', 'expected_status'],
+    [
+        (True, False, 500),
+        (False, True, 400),
+        (False, False, 200)
+])
+@pytest.mark.parametrize('data_point_count', [1, 10, 100])
+def test_predict_view_integration(data_point_count, corrupted_data,
+                                  ill_formated_body, expected_status, client):
+    """Check that the predict view can call the prediction system."""
+    data_points = get_test_datapoints(data_point_count)
+    if corrupted_data:
+        # Randomly corrupt somes value by insterting meanless content
+        # Note: this could be done in a fixture...
+        for dp in data_points:
+            for key in dp.keys():
+                if random() > 0.5:
+                    dp[key] = str(os.urandom(10))
+
+    if ill_formated_body:
+        # Just build a feed that does NOT comply to the API documentation.
+        # Here we use `payload` as the root key, instead of `data`
+        feed = {'payload': data_points}
     else:
-        body = {'data': get_test_datapoints(n_size)}
-    return requests.post(PREDICT_URL, json=body)
+        feed = {'data': data_points}
 
+    response = client.post(PREDICT_ROUTE, json=feed)
 
-@pytest.mark.parametrize("n_size", [1, 10, 100])
-def test_serving_predictions(client, n_size):
-    resp = _send_post(n_size=n_size)
-    assert resp.status_code == 200
-    assert len(resp.json()) == n_size
-
-
-def test_incorrect_serving_prediction(client):
-    resp = _send_post("")
-    assert resp.status_code == 400
-
+    _ = json.loads(response.data)  # check valid JSON response
+    assert response.status_code == expected_status
