@@ -11,7 +11,7 @@ from tests.utils import get_test_datapoints
 
 
 SERVE_COMMAND = 'python -m src.main --serve'
-SERVER_PORT = 5000
+SERVER_PORT = 5001
 
 BASE_URL = f'http://localhost:{SERVER_PORT}'
 PING_URL = BASE_URL + PING_ROUTE
