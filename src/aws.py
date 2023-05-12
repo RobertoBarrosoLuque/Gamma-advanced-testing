@@ -16,13 +16,23 @@ REQUIRED_ENV_VARS = (
 logger = getLogger(__name__)
 
 
+def check_aws_config(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        if any(key is None for key in REQUIRED_ENV_VARS):
+            raise ValueError(
+                "AWS credentials and default bucket name must be "
+                "provided as enviroment variables. Check 'config.py' for info."
+            )
+        return function(*args, **kwargs)
+    return wrapper
+
+
+@check_aws_config
 def upload_data_to_s3(data: bytes, key: str,
                       bucket: str = AWS_S3_BUCKET_NAME) -> None:
-    if any(key is None for key in REQUIRED_ENV_VARS):
-        raise ValueError(
-            "AWS credentials and default bucket name must be "
-            "provided as enviroment variables. Check 'config.py' for info."
-        )
+
+
     logger.info(f'Uploading {len(data) / 1000:.2f} kb of data to S3...')
     S3.put_object(
         ACL='private',
@@ -32,12 +42,9 @@ def upload_data_to_s3(data: bytes, key: str,
     )
 
 
+@check_aws_config
 def download_data_from_s3(key: str, bucket: str = AWS_S3_BUCKET_NAME) -> bytes:
-    if any(key is None for key in REQUIRED_ENV_VARS):
-        raise ValueError(
-            "AWS credentials and default bucket name must be "
-            "provided as enviroment variables. Check 'config.py' for info."
-        )
+
     logger.info(f"Downloading '{key}' from S3 bucket...")
     resp = S3.get_object(
         Bucket=bucket,
