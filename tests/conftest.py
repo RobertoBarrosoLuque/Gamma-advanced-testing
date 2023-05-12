@@ -14,9 +14,14 @@ def raw_data():
 
 
 @pytest.fixture(scope='session')
-def data(raw_data):
-    test_data = get_testing_data(raw_data[:30])
-    return test_data
+def small_data(raw_data):
+    return raw_data[:300]
+
+
+@pytest.fixture(scope='session')
+def data(small_data):
+    X_test, y_test = get_testing_data(small_data)
+    return X_test, y_test
 
 
 @pytest.fixture(scope='session')
