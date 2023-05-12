@@ -19,21 +19,20 @@ logger = getLogger(__name__)
 SCORING = 'neg_log_loss'
 
 
-def _train_test_split(data: DataFrame) -> Tuple:
+def train_test_split_(data: DataFrame) -> Tuple:
     X, y = split_labels(data)
     X_train, X_test, y_train, y_test = train_test_split(X, y)
     return X_train, X_test, y_train, y_test
 
 
-def _get_best_estimator_and_cv_log_loss(optimize: bool, estimator: SklearnEstimator, X_train: DataFrame,
-                                        y_train: DataFrame) -> Tuple[SklearnEstimator, np.ndarray]:
+def get_best_estimator_and_cv_log_loss(optimize: bool, estimator: SklearnEstimator, X_train: DataFrame,
+                                       y_train: DataFrame) -> Tuple[SklearnEstimator, np.ndarray]:
     if optimize:
         best_estimator, cv_log_losses = hyperopt(
             estimator, X_train, y_train, param_grid=get_param_grid()
         )
     else:
-        cv_log_losses = cross_validate(estimator, X_train, y_train)
-        best_estimator = estimator
+        best_estimator, cv_log_losses = cross_validate(estimator, X_train, y_train)
     return best_estimator, cv_log_losses
 
 
@@ -43,9 +42,9 @@ def train(estimator: SklearnEstimator,
           log: bool = True) -> Tuple[float, np.ndarray]:
     logger.debug(f'Training {estimator.__class__.__name__} on dataset...')
 
-    X_train, X_test, y_train, y_test = _train_test_split(data)
+    X_train, X_test, y_train, y_test = train_test_split_(data)
 
-    best_estimator, cv_log_losses = _get_best_estimator_and_cv_log_loss(
+    best_estimator, cv_log_losses = get_best_estimator_and_cv_log_loss(
         optimize=optimize, estimator=estimator, X_train=X_train, y_train=y_train
     )
 
@@ -64,9 +63,11 @@ def train(estimator: SklearnEstimator,
 
 def cross_validate(estimator: SklearnEstimator,
                    X: DataFrame,
-                   y: DataFrame) -> np.ndarray:
-    return -cross_val_score(estimator, X, y,
-                            scoring=SCORING, cv=gen_kfold())
+                   y: DataFrame) -> Tuple[SklearnEstimator,np.ndarray]:
+    estimator.fit(X=X, y=y)
+    score = -cross_val_score(estimator, X, y,
+                             scoring=SCORING, cv=gen_kfold())
+    return estimator, score
 
 
 def _fit_grid_search_obj(estimator, param_grid, X, y):
@@ -97,7 +98,7 @@ def hyperopt(estimator: SklearnEstimator,
     cv_results = pd.DataFrame(grid_search_obj.cv_results_).sort_values(by='rank_test_score')
     best_cv_losses = _calculate_best_cv_loss(cv_results, grid_search_obj)
 
-    return grid_search_obj.best_estimator_, best_cv_losses
+    return grid_search_obj.best_estimator_, best_cv_losses.to_numpy()
 
 
 def evaluate(estimator: SklearnEstimator, X: DataFrame, y: DataFrame) -> float:
